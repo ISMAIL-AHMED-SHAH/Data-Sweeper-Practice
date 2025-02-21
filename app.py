@@ -62,7 +62,8 @@ st.markdown(
 uploaded_files = st.file_uploader(
     label="Choose files to upload",
     type=["csv", "xlsx", "ods"],
-    accept_multiple_files=True
+    accept_multiple_files=True,
+    key="file_uploader_1"
 )
 
 # ---- SEARCH BAR ----
@@ -155,6 +156,55 @@ st.markdown(
     """
     <div style="text-align: center; padding: 10px; background-color: #e8f5e9; border-radius: 10px;">
         <h3 style="color: #2e7d32; font-size: 20px;">✅ All files processed successfully!</h3>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+st.title("Data Dashboard")
+
+uploaded_files = st.file_uploader(
+    label="Choose files to upload",
+    type=["csv", "xlsx", "ods"],
+    accept_multiple_files=True,
+    key="file_uploader_2"
+)
+
+if uploaded_files is not None:
+    df = pd.read_csv(uploaded_files[0])
+
+    st.subheader("Data Preview")
+    st.write(df.head())
+
+    st.subheader("Data Summary")
+    st.write(df.describe())
+
+    st.subheader("Filter Data")
+    columns = df.columns.tolist()
+    selected_column = st.selectbox("Select Column", columns)
+    unique_values = df[selected_column].unique()
+    selected_value = st.selectbox("Select Value", unique_values)
+
+    filtered_df = df[df[selected_column] == selected_value]
+    st.write(filtered_df)
+
+    st.subheader("Plot Data")
+    x_column = st.selectbox("Select X Axis Column", columns)
+    y_column = st.selectbox("Select Y Axis Column", columns)
+
+    if st.button("Generate Plot"):
+        st.line_chart(filtered_df.set_index(x_column)[y_column])
+else:
+        st.write("Waiting for file upload...")
+
+
+
+# ---- FOOTER ----
+st.markdown(
+    """
+    <div style="text-align: center; padding: 20px;">
+        <p style="font-size: 14px;">Made with ❤️ by Ismail Ahmed Shah</p>
     </div>
     """,
     unsafe_allow_html=True
