@@ -6,206 +6,116 @@ from io import BytesIO
 # ---- PAGE CONFIGURATION ----
 st.set_page_config(page_title="💿 Data Sweeper", layout="wide")
 
-# ---- LIGHT/DARK MODE TOGGLE ----
+# ---- DARK MODE TOGGLE ----
 dark_mode = st.checkbox("Toggle Dark Mode", value=False)
 
 # ---- CUSTOM CSS ----
-if dark_mode:
-    st.markdown("""
-        <style>
-            body { background-color: #2C2C2C; color: white; }
-            .main { background-color: #3A3A3A; border-radius: 10px; padding: 20px; }
-            h1 { text-align: center; font-weight: 700; color: #FFFFFF; }
-            .upload-section { padding: 15px; border: 2px dashed #3498DB; border-radius: 10px; }
-            .stButton button { width: 100%; border-radius: 8px; font-weight: bold; }
-            .stDownloadButton button { width: 100%; border-radius: 8px; background-color: #28A745; color: white; }
-            .stDataFrame { border-radius: 10px; }
-            .icon { font-size: 22px; color: #3498DB; margin-right: 5px; }
-        </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-        <style>
-            body { background-color: #f4f7f9; color: black; }
-            .main { background-color: white; border-radius: 10px; padding: 20px; }
-            h1 { text-align: center; font-weight: 700; color: #2C3E50; }
-            .upload-section { padding: 15px; border: 2px dashed #3498DB; border-radius: 10px; }
-            .stButton button { width: 100%; border-radius: 8px; font-weight: bold; }
-            .stDownloadButton button { width: 100%; border-radius: 8px; background-color: #28A745; color: white; }
-            .stDataFrame { border-radius: 10px; }
-            .icon { font-size: 22px; color: #3498DB; margin-right: 5px; }
-        </style>
-    """, unsafe_allow_html=True)
+st.markdown(
+    f"""
+    <style>
+        .main {{ background-color: {'#3A3A3A' if dark_mode else 'white'}; border-radius: 10px; padding: 20px; }}
+        h1 {{ text-align: center; font-weight: 700; color: {'#FFFFFF' if dark_mode else '#2C3E50'}; }}
+        .upload-section {{ padding: 15px; border: 2px dashed #3498DB; border-radius: 10px; }}
+        .stButton button, .stDownloadButton button {{ width: 100%; border-radius: 8px; font-weight: bold; }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # ---- HEADER ----
-st.markdown("""
-    <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #578FCA,#3674B5); border-radius: 10px; color: white; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);">
-        <h1 style="font-size: 36px; font-weight: bold; margin-bottom: 10px;">💿 Data Sweeper</h1>
-        <p style="font-size: 18px; font-weight: 400; opacity: 0.9;">Effortlessly transform, clean, and visualize your data.</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# ---- FILE UPLOAD SECTION ----
 st.markdown(
     """
-    <div style="text-align: center;">
-        <h2 style="color: #4CAF50; font-size: 26px;">📂 Upload Your Files</h2>
-        <p style="font-size: 16px; color: #666;">
-            Upload CSV, Excel (XLSX), or ODS files for processing.
-        </p>
-    </div>
-    """, 
-    unsafe_allow_html=True
-)
-
-# File Uploader with better spacing
-uploaded_files = st.file_uploader(
-    label="Choose files to upload",
-    type=["csv", "xlsx", "ods"],
-    accept_multiple_files=True,
-    key="file_uploader_1"
-)
-
-# ---- SEARCH BAR ----
-search_term = st.text_input("Search in DataFrame", "")
-
-if uploaded_files:
-    for file in uploaded_files:
-        file_ext = os.path.splitext(file.name)[-1].lower()
-        
-        try:
-            # ---- LOAD FILE BASED ON TYPE ----
-            if file_ext == ".csv":
-                df = pd.read_csv(file)
-            elif file_ext == ".xlsx":
-                df = pd.read_excel(file, engine="openpyxl")
-            elif file_ext == ".ods":
-                df = pd.read_excel(file, engine="odf")
-            else:
-                st.error(f"❌ Unsupported file type: {file_ext}")
-                continue
-
-            # ---- FILE DETAILS ----
-            st.markdown(f"<h3>📄 {file.name}</h3>", unsafe_allow_html=True)
-            st.markdown(f"<p style='font-size: 16px;'><strong>Size:</strong> {file.size / 1024:.2f} KB</p>", unsafe_allow_html=True)
-
-            # ---- DATA PREVIEW ----
-            st.markdown("#### 🔍 Data Preview")
-            if search_term:
-                filtered_df = df[df.apply(lambda row: row.astype(str).str.contains(search_term, case=False).any(), axis=1)]
-                st.dataframe(filtered_df.head())
-            else:
-                st.dataframe(df.head())
-
-            # ---- DATA CLEANING ----
-            st.markdown("### 🧹 Data Cleaning Options")
-            if st.checkbox(f"Enable Cleaning for `{file.name}`"):
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    if st.button(f"🗑 Remove Duplicates from {file.name}"):
-                        df.drop_duplicates(inplace=True)
-                        st.success("✔ Duplicates Removed Successfully!")
-
-                with col2:
-                    if st.button(f"🛠 Fill Missing Values for {file.name}"):
-                        numeric_cols = df.select_dtypes(include=['number']).columns
-                        df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
-                        st.success("✔ Missing Values Filled!")
-
-            # ---- COLUMN SELECTION ----
-            st.markdown("### 🎯 Choose Columns to Keep")
-            selected_columns = st.multiselect(f"📌 Select columns for `{file.name}`", df.columns, default=df.columns)
-            df = df[selected_columns]
-
-            # ---- DATA VISUALIZATION ----
-            st.markdown("### 📊 Data Visualization")
-            if st.checkbox(f"📈 Show Visualization for `{file.name}`"):
-                st.bar_chart(df.select_dtypes(include='number').iloc[:, :2])
-
-            # ---- FILE CONVERSION ----
-            st.markdown("### 🔄 Convert File Format")
-            conversion_type = st.radio(f"📝 Convert `{file.name}` to:", ["CSV", "Excel"], key=file.name + "_convert")
-
-            if st.button(f"📥 Convert `{file.name}`"):
-                buffer = BytesIO()
-
-                if conversion_type == "CSV":
-                    df.to_csv(buffer, index=False)
-                    file_name = file.name.replace(file_ext, ".csv")
-                    mime_type = "text/csv"
-                elif conversion_type == "Excel":
-                    df.to_excel(buffer, index=False, engine="openpyxl")
-                    file_name = file.name.replace(file_ext, ".xlsx")
-                    mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-                buffer.seek(0)
-
-                st.download_button(
-                    label="📩 Download Converted File",
-                    data=buffer,
-                    file_name=file_name,
-                    mime=mime_type
-                )
-
-        except Exception as e:
-            st.error(f"⚠️ Error processing `{file.name}`: {e}")
-
-# Success message with enhanced styling
-st.markdown(
-    """
-    <div style="text-align: center; padding: 10px; background-color: #e8f5e9; border-radius: 10px;">
-        <h3 style="color: #2e7d32; font-size: 20px;">✅ All files processed successfully!</h3>
+    <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #578FCA,#3674B5); border-radius: 10px; color: white;">
+        <h1>💿 Data Sweeper</h1>
+        <p>Effortlessly transform, clean, and visualize your data.</p>
     </div>
     """,
     unsafe_allow_html=True
 )
 
+# ---- FILE UPLOADER ----
+st.markdown("### 📂 Upload Your File")
+uploaded_file = st.file_uploader("Upload CSV, Excel (XLSX), or ODS files", type=["csv", "xlsx", "ods"])
 
-st.title("Data Dashboard")
+# ---- FUNCTION TO LOAD DATA ----
+@st.cache_data
+def load_data(file):
+    file_ext = os.path.splitext(file.name)[-1].lower()
+    if file_ext == ".csv":
+        return pd.read_csv(file)
+    elif file_ext == ".xlsx":
+        return pd.read_excel(file, engine="openpyxl")
+    elif file_ext == ".ods":
+        return pd.read_excel(file, engine="odf")
+    else:
+        return None
 
-uploaded_files = st.file_uploader(
-    label="Choose files to upload",
-    type=["csv", "xlsx", "ods"],
-    accept_multiple_files=True,
-    key="file_uploader_2"
-)
+# ---- PROCESS FILE ----
+if uploaded_file:
+    df = load_data(uploaded_file)
 
-if uploaded_files is not None:
-    df = pd.read_csv(uploaded_files[0])
+    if df is None:
+        st.error("❌ Unsupported file format.")
+    else:
+        st.markdown(f"#### 📄 File: {uploaded_file.name} ({uploaded_file.size / 1024:.2f} KB)")
 
-    st.subheader("Data Preview")
-    st.write(df.head())
+        # ---- SEARCH BAR ----
+        search_term = st.text_input("Search in DataFrame", "")
+        filtered_df = df[df.astype(str).apply(lambda row: row.str.contains(search_term, case=False, na=False).any(), axis=1)] if search_term else df
 
-    st.subheader("Data Summary")
-    st.write(df.describe())
+        # ---- DISPLAY DATA ----
+        st.markdown("### 🔍 Data Preview")
+        st.dataframe(filtered_df.head())
 
-    st.subheader("Filter Data")
-    columns = df.columns.tolist()
-    selected_column = st.selectbox("Select Column", columns)
-    unique_values = df[selected_column].unique()
-    selected_value = st.selectbox("Select Value", unique_values)
+        # ---- DATA CLEANING ----
+        st.markdown("### 🧹 Data Cleaning")
+        col1, col2 = st.columns(2)
 
-    filtered_df = df[df[selected_column] == selected_value]
-    st.write(filtered_df)
+        with col1:
+            if st.button("🗑 Remove Duplicates"):
+                df.drop_duplicates(inplace=True)
+                st.success("✔ Duplicates Removed!")
 
-    st.subheader("Plot Data")
-    x_column = st.selectbox("Select X Axis Column", columns)
-    y_column = st.selectbox("Select Y Axis Column", columns)
+        with col2:
+            if st.button("🛠 Fill Missing Values"):
+                df.fillna(df.mean(numeric_only=True), inplace=True)
+                st.success("✔ Missing Values Filled!")
 
-    if st.button("Generate Plot"):
-        st.line_chart(filtered_df.set_index(x_column)[y_column])
-else:
-        st.write("Waiting for file upload...")
+        # ---- COLUMN SELECTION ----
+        st.markdown("### 🎯 Select Columns")
+        selected_columns = st.multiselect("Choose columns", df.columns, default=df.columns)
+        df = df[selected_columns]
 
+        # ---- DATA VISUALIZATION ----
+        st.markdown("### 📊 Data Visualization")
+        if st.checkbox("📈 Show Visualization"):
+            numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+            if len(numeric_cols) >= 2:
+                x_column = st.selectbox("Select X Axis", numeric_cols)
+                y_column = st.selectbox("Select Y Axis", numeric_cols)
+                st.line_chart(df.set_index(x_column)[y_column])
+            else:
+                st.warning("⚠️ Need at least two numeric columns for visualization.")
 
+        # ---- FILE CONVERSION ----
+        st.markdown("### 🔄 Convert File")
+        conversion_type = st.radio("Convert to:", ["CSV", "Excel"])
+
+        if st.button("📥 Convert & Download"):
+            buffer = BytesIO()
+            file_name = uploaded_file.name.split(".")[0]
+
+            if conversion_type == "CSV":
+                df.to_csv(buffer, index=False)
+                mime_type = "text/csv"
+                file_name += ".csv"
+            else:
+                df.to_excel(buffer, index=False, engine="openpyxl")
+                mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                file_name += ".xlsx"
+
+            buffer.seek(0)
+            st.download_button("📩 Download", data=buffer, file_name=file_name, mime=mime_type)
 
 # ---- FOOTER ----
-st.markdown(
-    """
-    <div style="text-align: center; padding: 20px;">
-        <p style="font-size: 14px;">Made with ❤️ by Ismail Ahmed Shah</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("<p style='text-align: center;'>Made with ❤️ by Ismail Ahmed Shah</p>", unsafe_allow_html=True)
